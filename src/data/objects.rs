@@ -5,14 +5,15 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Serialize)] pub struct RequestObject {
     UserId: String,
     UserPw: String,
-    AppVersion: String,
-    Language: String,
-    OsVersion: String,
+    PushId: String,
     AppId: String,
-    Device: String,
+    AppVersion: String,
     BundleId: String,
     Date: String,
+    Device: String,
+    Language: String,
     LastUpdate: String,
+    OsVersion: String,
 }
 
 impl RequestObject {
@@ -26,14 +27,16 @@ impl RequestObject {
         RequestObject {
             UserId: user_id.to_owned(),
             UserPw: user_password.to_owned(),
-            AppVersion: "2.3.4".to_owned(),
+            AppId: "BC86F8E5-5D4A-4A19-A317-04D1E52FF9ED".to_owned(),
+            AppVersion: "2.5.6".to_owned(),
+            // https://itunes.apple.com/lookup?id=461741785
+            BundleId: "de.digitales-schwarzes-brett.dsblight".to_owned(),
+            Date: date.to_string(),
+            Device: "iPhone".to_owned(),
             Language: "en-DE".to_owned(),
-            OsVersion: "69.4.2".to_owned(),
-            AppId: "fc671af2-edc8-4536-9705-aac6db076817".to_owned(),
-            Device: "Spaceshuttle".to_owned(),
-            BundleId: "de.odincat.dsb-rs".to_owned(),
-            Date: "Sun Nov 06 2022 00:15:28 GMT+0100 (Central European Standard Time)".to_owned(),
-            LastUpdate: "Sun Nov 06 2022 00:15:28 GMT+0100 (Central European Standard Time)".to_owned(), 
+            LastUpdate: date.to_string(), 
+            OsVersion: "13.2.2".to_owned(),
+            PushId: "".to_owned(),
         }
     }
 
@@ -52,5 +55,9 @@ impl ResponseObject {
     pub fn parse(response: &str) -> ResponseObject {
         let response_object: ResponseObject = serde_json::from_str(response).unwrap();
         return response_object
+    }
+
+    pub fn retrieve_plan_url (responseObject: ResponseObject) -> String {
+        return String::from("asdd_");
     }
 }
