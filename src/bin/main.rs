@@ -1,15 +1,23 @@
-use dsb_rs::data::objects::RequestObject;
-use dsb_rs::data::compression::{compress_and_encode, decode_and_decompress};
+use std::collections::HashMap;
+use dsb_rs::{data::{requests::{TokenRequest, PlanRequest}, routines::fetch_and_parse}, Store};
+use log::{info, error};
+use serde_json::Value;
+use simplelog::{CombinedLogger, TermLogger, WriteLogger, LevelFilter};
 
 #[tokio::main]
 async fn main() {
-    println!("Hello, world!");
-    let test = RequestObject::new("", "");
-    let hi = RequestObject::stringify(test);
+    TermLogger::init(LevelFilter::Info, simplelog::Config::default(), simplelog::TerminalMode::Mixed, simplelog::ColorChoice::Auto).unwrap();
+    let config = dsb_rs::config::Config::load().await;
 
-    let comp = compress_and_encode(&hi);
-    println!("{}", comp);
+    // if &config.log_file.is_empty() == &false {
+    //     let _ = WriteLogger::init(LevelFilter::Info, simplelog::Config::default(), std::fs::File::create(config.log_file).unwrap());
+    // }
 
-    let uncomp = decode_and_decompress(&comp);
-    println!("{}", uncomp)
+    let mut store = Store {
+        plans: HashMap::new(),
+    };
+     
+    store = fetch_and_parse(&config, store).await;
+    println!("{:?}", store.plans[""]);
+    // println!("{}", &plans[0]["Id"]);
 }

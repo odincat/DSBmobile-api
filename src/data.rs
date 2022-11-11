@@ -1,2 +1,3 @@
-pub mod compression;
-pub mod objects;
+pub mod requests;
+pub mod routines;
+pub mod parse;

@@ -1,9 +1,8 @@
 # DSBmobile Data Server
 
 ## Todo
-- [ ] load environment variables & create example.env
-- [ ] handling encoding & compression
-- [ ] request link for plan
+- [X] load environment variables & create example.env -> config file
+- [X] request link for plan
 - [ ] parsing html
 - [ ] API -> Webserver (https://rocket.rs/)
 - [ ] refactoring
