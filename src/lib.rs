@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use scraper::ElementRef;
 use serde_json::Value;
 
 pub mod data;
@@ -10,18 +11,26 @@ pub fn err_panic(err: &str) {
     panic!("{}", err);
 }
 
+pub fn get_text(element: &ElementRef) -> String {
+    let text = element.text().collect::<Vec<_>>()[0].to_string();
+    text
+}
+
 #[derive(Debug)]
 pub struct Content {
-    pub info: Vec<String>,
+    pub news: Vec<String>,
+    pub date: String,
+    pub weekday: String,
     pub content: Value,
+    pub week_type: String
 }
 
 #[derive(Debug)]
 pub struct Plan {
     pub url: String,
-    current: Content,
-    upcoming: Content,
-    last_updated: String
+    pub current: Content,
+    pub upcoming: Content,
+    pub last_updated: String
 }
 
 #[derive(Debug)]

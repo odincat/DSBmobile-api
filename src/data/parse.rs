@@ -1,6 +1,7 @@
+use log::debug;
 use reqwest::Client;
-use tl::{VDom, Parser};
-use crate::{Content, err_panic};
+use scraper::{Html, Selector};
+use crate::{Content, err_panic, get_text};
 
 pub struct GenericPlanParserResult {
     pub current: Content,
@@ -12,29 +13,123 @@ pub struct GenericPlanParser {
 }
 
 impl GenericPlanParser {
-    fn parse_info(&self, dom: &VDom<'_>, parser: &Parser<'_>) -> Vec<String> {
-        let res = dom.query_selector("table.info").expect("el not found").for_each(|el| {
-            for el in el.get(parser).unwrap().children().iter() {
-                
-            }
-        }); 
+    fn parse_date(&self, document: &Html) -> (String, String) {
+        let date_selector = Selector::parse("div.mon_title").unwrap();
 
-        vec!["".to_owned()]
+        let mut current_date = "".to_owned();
+        let mut upcoming_date = "".to_owned();
+
+        for (index, date_item) in document.select(&date_selector).enumerate() {
+            let date_text = get_text(&date_item);
+            let date = date_text.split(" ").collect::<Vec<&str>>()[0].to_owned();
+
+            if index == 0 {
+                current_date = date;
+            } else if index == 1 {
+                upcoming_date = date;
+            }
+        }
+
+        (current_date, upcoming_date)
+    }
+
+    fn parse_weekday(&self, document: &Html) -> (String, String) {
+        let date_selector = Selector::parse("div.mon_title").unwrap();
+
+        let mut current_weekday = "".to_owned();
+        let mut upcoming_weekday = "".to_owned();
+
+        for (index, weekday_item) in document.select(&date_selector).enumerate() {
+            let weekday_text = get_text(&weekday_item);
+            let weekday = weekday_text.split(" ").collect::<Vec<&str>>()[1].to_owned();
+
+            if index == 0 {
+                current_weekday = weekday;
+            } else if index == 1 {
+                upcoming_weekday = weekday;
+            }
+        }
+
+        (current_weekday, upcoming_weekday)
+    }
+
+    fn parse_week_type(&self, document: &Html) -> (String, String) {
+        let date_selector = Selector::parse("div.mon_title").unwrap();
+
+        let mut current_week_type = "".to_owned();
+        let mut upcoming_week_type = "".to_owned();
+
+        for (index, date_item) in document.select(&date_selector).enumerate() {
+            let date = get_text(&date_item);
+            // "11.11.2022 Freitag, Woche B", get last character
+            let week_type = &date[date.len()-1..date.len()];
+
+            if index == 0 {
+                current_week_type = week_type.to_owned();
+            } else if index == 1 {
+                upcoming_week_type = week_type.to_owned();
+            }
+        }
+
+        (current_week_type, upcoming_week_type)
+    }
+
+    fn parse_news(&self, document: &Html) -> (Vec<String>, Vec<String>) {
+        let news_table_selector = Selector::parse("table.info").unwrap();
+
+        let mut current_news: Vec<String> = vec![];
+        let mut upcoming_news: Vec<String> = vec![];
+
+        for (index, news_table) in document.select(&news_table_selector).enumerate() {
+            let news_item_selector = Selector::parse("tr.info td.info b").unwrap();
+
+            for news_item in news_table.select(&news_item_selector) {
+                let news_item_text = news_item.text().collect::<Vec<_>>().join(" ");
+
+                if index == 0 {
+                    current_news.push(news_item_text);
+                } else {
+                    upcoming_news.push(news_item_text);
+                }
+            }
+        }
+
+        debug!("Current news: {:?}", current_news);
+        debug!("Upcoming news: {:?}", upcoming_news);
+        
+        return (current_news, upcoming_news);
     }
 
     pub async fn execute(&self) -> GenericPlanParserResult {
-        if(self.url.len() == 0) {
+        if self.url.len() == 0 {
             err_panic("URL must be supplied");
         }
 
         let client = Client::new();
 
         let response = client.get(self.url.clone()).send().await.unwrap().text().await.unwrap();
-        let dom = tl::parse(&response, tl::ParserOptions::default()).unwrap();
-        let parser = &dom.parser();
+        let document = Html::parse_document(&response);
 
-        let info = self.parse_info(&dom, &parser);
+        let date = self.parse_date(&document);
+        let weekday = self.parse_weekday(&document);
+        let week_type = self.parse_week_type(&document);
+        let news = self.parse_news(&document);
 
-        GenericPlanParserResult { current: Content { info: vec!["hi".to_owned()], content: serde_json::Value::Null }, upcoming: Content { info: vec![], content: serde_json::Value::Null } }
+        GenericPlanParserResult {
+            current: Content {
+                content: serde_json::Value::Null,
+                date: date.0,
+                news: news.0,
+                week_type: week_type.0,
+                weekday: weekday.0
+            },
+            upcoming: Content {
+                content: serde_json::Value::Null,
+                date: date.1,
+                news: news.1,
+                week_type: week_type.1,
+                weekday: weekday.1
+            }
+        }
     }
 }

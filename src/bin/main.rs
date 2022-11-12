@@ -19,5 +19,4 @@ async fn main() {
      
     store = fetch_and_parse(&config, store).await;
     println!("{:?}", store.plans[""]);
-    // println!("{}", &plans[0]["Id"]);
 }
