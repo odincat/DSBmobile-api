@@ -1,3 +1,4 @@
+use std::{collections::HashMap};
 use log::debug;
 use reqwest::Client;
 use scraper::{Html, Selector};
@@ -100,6 +101,48 @@ impl GenericPlanParser {
         return (current_news, upcoming_news);
     }
 
+    fn parse_content(&self, document: &Html) -> (Vec<HashMap<String, String>>, Vec<HashMap<String, String>>) {
+        let content_table_selector = Selector::parse("table.mon_list").unwrap();
+
+        let mut current_content: Vec<HashMap<String, String>> = vec![];
+        let mut upcoming_content: Vec<HashMap<String, String>> = vec![];
+
+        let mut table_headers: Vec<String> = vec![];
+
+        for (table_index, content_table) in document.select(&content_table_selector).enumerate() {
+            // Table headers
+            let th_selector = Selector::parse("tr.list th").unwrap();
+            for th in content_table.select(&th_selector) {
+                let text = get_text(&th).to_lowercase();
+                table_headers.push(text);
+            }
+        
+            // Table content
+            let mut items: Vec<HashMap<String, String>> = vec![];
+
+            let tr_content_selector = Selector::parse("tr.list.odd, tr.list.even").unwrap();
+            for tr in content_table.select(&tr_content_selector) {
+                let td_selector = Selector::parse("td").unwrap();
+                let mut item: HashMap<String, String> = HashMap::new();
+
+                for (td_index, td) in tr.select(&td_selector).enumerate() {
+                    let text = get_text(&td).to_lowercase();
+                    item.insert(table_headers[td_index].to_owned(), text);
+                }
+                
+                items.push(item);
+            }
+
+            if table_index == 0 {
+                current_content = items;
+            } else {
+                upcoming_content = items;
+            }
+        }
+
+        (current_content, upcoming_content)
+    }
+
     pub async fn execute(&self) -> GenericPlanParserResult {
         if self.url.len() == 0 {
             err_panic("URL must be supplied");
@@ -114,17 +157,18 @@ impl GenericPlanParser {
         let weekday = self.parse_weekday(&document);
         let week_type = self.parse_week_type(&document);
         let news = self.parse_news(&document);
+        let content = self.parse_content(&document);
 
         GenericPlanParserResult {
             current: Content {
-                content: serde_json::Value::Null,
+                content: content.0,
                 date: date.0,
                 news: news.0,
                 week_type: week_type.0,
                 weekday: weekday.0
             },
             upcoming: Content {
-                content: serde_json::Value::Null,
+                content: content.1,
                 date: date.1,
                 news: news.1,
                 week_type: week_type.1,

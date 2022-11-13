@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use scraper::ElementRef;
-use serde_json::Value;
+use serde::Serialize;
 
 pub mod data;
 pub mod config;
@@ -16,16 +16,28 @@ pub fn get_text(element: &ElementRef) -> String {
     text
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Content {
     pub news: Vec<String>,
     pub date: String,
     pub weekday: String,
-    pub content: Value,
+    pub content: Vec<HashMap<String, String>>,
     pub week_type: String
 }
 
-#[derive(Debug)]
+impl Content {
+    pub fn default() -> Content {
+        Content {
+            news: vec![],
+            date: "".to_string(),
+            weekday: "".to_string(),
+            content: vec![],
+            week_type: "".to_string()
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
 pub struct Plan {
     pub url: String,
     pub current: Content,

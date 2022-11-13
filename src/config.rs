@@ -11,9 +11,10 @@ pub struct SchoolProvider {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct WebServer {
+pub struct Server {
     pub port: u16,
-    pub host: String
+    pub host: String,
+    pub refetch_interval: u64
 }
 
 #[derive(Deserialize, Debug)]
@@ -27,7 +28,7 @@ pub struct Config {
     pub log_file: String,
     pub log_level: String, //TODO: impl 
     pub school_providers: Vec<SchoolProvider>,
-    pub webserver: WebServer,
+    pub server: Server,
     pub keys: Keys
 }
 

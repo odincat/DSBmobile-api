@@ -3,6 +3,13 @@ log_file = "dsb-rs.log"
 log_level = "info"
 # ---[ END: Logging ]---
 
+# ---[ Server ]---
+[server]
+refetch_interval = 600 # in seconds, = 10 minutes
+port = 8080
+host = "127.0.0.1"
+# ---[ END: Server ]---
+
 # ---[ Providers ]---
 # [school_providers]
 # username = "username"
@@ -20,12 +27,6 @@ password = "public"
 plan_title = ""
 url_identifier = "pub2"
 # ---[ END: Providers ]---
-
-# ---[ Webserver ]---
-[webserver]
-port = 8080
-host = "127.0.0.1"
-# ---[ END: Webserver ]---
 
 # ---[ Keys ]---
 [keys]

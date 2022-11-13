@@ -25,8 +25,8 @@ pub async fn fetch_and_parse (config: &Config, inital_store: Store) -> Store {
                 let mut plan_object = Plan {
                     last_updated: last_updated.to_string(),
                     url: url.to_string(),
-                    current: Content { news: vec![], content: serde_json::Value::Null, date: "dummy".to_owned(), weekday: "".to_owned(), week_type: "dummy".to_owned() },
-                    upcoming: Content { news: vec![], content: serde_json::Value::Null, date: "dummy".to_owned(), weekday: "".to_owned(), week_type: "dummy".to_owned() }
+                    current: Content::default(),
+                    upcoming: Content::default() 
                 };
 
                 let parser = GenericPlanParser { url: url.to_owned() }.execute().await;

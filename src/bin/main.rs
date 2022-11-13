@@ -1,8 +1,7 @@
 use std::collections::HashMap;
-use dsb_rs::{data::{requests::{TokenRequest, PlanRequest}, routines::fetch_and_parse}, Store};
-use log::{info, error};
-use serde_json::Value;
-use simplelog::{CombinedLogger, TermLogger, WriteLogger, LevelFilter};
+use dsb_rs::{data::routines::fetch_and_parse, Store};
+use simplelog::{TermLogger, LevelFilter};
+use tokio::{task, time};
 
 #[tokio::main]
 async fn main() {
@@ -17,6 +16,15 @@ async fn main() {
         plans: HashMap::new(),
     };
      
-    store = fetch_and_parse(&config, store).await;
-    println!("{:?}", store.plans[""]);
+    let refetch = task::spawn(async move {
+        let mut interval = time::interval(time::Duration::from_secs(config.server.refetch_interval));
+
+        loop {
+            interval.tick().await;
+            println!("Fetching...");
+            store = fetch_and_parse(&config, store).await;
+        }
+    });
+
+    refetch.await.unwrap();
 }
