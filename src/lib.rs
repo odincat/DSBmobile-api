@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use scraper::ElementRef;
 use serde::Serialize;
 
+pub mod api;
 pub mod data;
 pub mod config;
 

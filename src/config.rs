@@ -1,5 +1,5 @@
+use std::fs::read_to_string;
 use serde::Deserialize;
-use tokio::fs::read_to_string;
 use toml::from_str;
 
 #[derive(Deserialize, Debug)]
@@ -33,9 +33,9 @@ pub struct Config {
 }
 
 impl Config {
-    pub async fn load() -> Config {
+    pub fn load() -> Config {
         let config_file_path = std::env::var("CONFIG_FILE").unwrap_or("config.toml".to_string());
-        let config_file = read_to_string(config_file_path).await.unwrap();
+        let config_file = read_to_string(config_file_path).unwrap();
         let config: Config = from_str(&config_file).unwrap();
 
         return config;

@@ -1,9 +1,13 @@
+use std::{sync::Arc, collections::HashMap};
+
 use log::info;
 
 use crate::{config::Config, Store, data::requests::{TokenRequest, PlanRequest}, Content, Plan, data::parse::GenericPlanParser};
 
-pub async fn fetch_and_parse (config: &Config, inital_store: Store) -> Store {
-    let mut store = inital_store;
+pub async fn fetch_and_parse (config: &Config) -> Store {
+    let mut store = Store {
+        plans: HashMap::new(),
+    };
 
     for provider in config.school_providers.iter() {
         let token = TokenRequest { username: provider.username.clone(), password: provider.password.clone() }.execute().await;
