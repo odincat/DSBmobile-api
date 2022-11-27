@@ -1,8 +1,9 @@
-use std::{sync::Arc, collections::HashMap};
+use std::collections::HashMap;
 
 use log::info;
+use reqwest::Client;
 
-use crate::{config::Config, Store, data::requests::{TokenRequest, PlanRequest}, Content, Plan, data::parse::GenericPlanParser};
+use crate::{config::Config, Store, data::requests::{TokenRequest, PlanRequest}, Content, Plan, data::parse::UntisParser};
 
 pub async fn fetch_and_parse (config: &Config) -> Store {
     let mut store = Store {
@@ -33,7 +34,10 @@ pub async fn fetch_and_parse (config: &Config) -> Store {
                     upcoming: Content::default() 
                 };
 
-                let parser = GenericPlanParser { url: url.to_owned() }.execute().await;
+                let client = Client::new();
+                let response = client.get(url).send().await.unwrap().text().await.unwrap();
+
+                let parser = UntisParser { document: response }.execute().await;
 
                 plan_object.current = parser.current;
                 plan_object.upcoming = parser.upcoming;

@@ -1,10 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use scraper::ElementRef;
 use serde::Serialize;
+use tokio::sync::Mutex;
 
-pub mod api;
 pub mod data;
+pub mod api;
 pub mod config;
 
 pub fn err_panic(err: &str) {
@@ -17,7 +18,7 @@ pub fn get_text(element: &ElementRef) -> String {
     text
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Content {
     pub news: Vec<String>,
     pub date: String,
@@ -38,7 +39,7 @@ impl Content {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Plan {
     pub url: String,
     pub current: Content,
@@ -46,7 +47,9 @@ pub struct Plan {
     pub last_updated: String
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Store {
     pub plans: HashMap<String, Plan>
 }
+
+pub type AppStore = Arc<Mutex<Store>>;

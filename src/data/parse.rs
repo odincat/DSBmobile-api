@@ -1,19 +1,20 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 use log::debug;
 use reqwest::Client;
 use scraper::{Html, Selector};
 use crate::{Content, err_panic, get_text};
 
-pub struct GenericPlanParserResult {
+#[derive(Debug)]
+pub struct UntisParserResult {
     pub current: Content,
     pub upcoming: Content 
 }
 
-pub struct GenericPlanParser {
-    pub url: String
+pub struct UntisParser {
+    pub document: String
 }
 
-impl GenericPlanParser {
+impl UntisParser {
     fn parse_date(&self, document: &Html) -> (String, String) {
         let date_selector = Selector::parse("div.mon_title").unwrap();
 
@@ -143,15 +144,12 @@ impl GenericPlanParser {
         (current_content, upcoming_content)
     }
 
-    pub async fn execute(&self) -> GenericPlanParserResult {
-        if self.url.len() == 0 {
-            err_panic("URL must be supplied");
+    pub async fn execute(&self) -> UntisParserResult {
+        if self.document.len() == 0 {
+            err_panic("HTML document in form of a string must be supplied");
         }
 
-        let client = Client::new();
-
-        let response = client.get(self.url.clone()).send().await.unwrap().text().await.unwrap();
-        let document = Html::parse_document(&response);
+        let document = Html::parse_document(&self.document);
 
         let date = self.parse_date(&document);
         let weekday = self.parse_weekday(&document);
@@ -159,7 +157,7 @@ impl GenericPlanParser {
         let news = self.parse_news(&document);
         let content = self.parse_content(&document);
 
-        GenericPlanParserResult {
+        UntisParserResult {
             current: Content {
                 content: content.0,
                 date: date.0,

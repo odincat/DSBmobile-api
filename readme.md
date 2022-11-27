@@ -1,11 +1,11 @@
 # DSBmobile Data Server
 
 ## Todo
-- [X] load environment variables & create example.env -> config file
-- [X] request link for plan
-- [ ] parsing html
-- [ ] API -> Webserver (https://rocket.rs/)
+- [ ] API -> Webserver (https://github.com/seanmonstar/warp)
 - [ ] refactoring
 - [ ] error handling
 
 ## Finished
+- load different schools (credentials, identifier etc.) from config file
+- request plan link
+- parse html

@@ -1,11 +1,22 @@
-use rocket::{Catcher, Route, routes, catchers};
+use std::{convert::Infallible, collections::HashMap};
+use serde::Deserialize;
+use warp::{Filter, Reply, Rejection, path, get, any, query};
+use crate::AppStore;
+use super::handlers;
 
-use super::{root::not_found, plan::get_plan};
-
-pub fn server_routes() -> Vec<Route> {
-    routes![get_plan]
+pub fn with_data_store(store: AppStore) -> impl Filter<Extract = (AppStore,), Error = Infallible> + Clone {
+    any().map(move || store.clone())
 }
 
-pub fn catchers() -> Vec<Catcher> {
-    return catchers![not_found];
+// GET /obtain/{school}?class={class}
+// This is unnecessary, but makes the route path more readable
+type School = String;
+
+pub fn get_school(store: AppStore) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
+    path!("obtain" / School)
+        .and(get())
+        .and(query::<HashMap<String, String>>())
+        .and(with_data_store(store))
+        .and_then(handlers::serve_school)
 }
+// END: GET /{school}?class={class}
