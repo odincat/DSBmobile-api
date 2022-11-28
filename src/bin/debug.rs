@@ -9,4 +9,5 @@ async fn main() {
 
     let result = UntisParser { document: plan_raw }.execute().await;
     println!("{:?}", result.current.week_type);
+    println!("{:?}", result.upcoming.week_type);
 }

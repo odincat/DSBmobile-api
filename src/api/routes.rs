@@ -1,5 +1,4 @@
 use std::{convert::Infallible, collections::HashMap};
-use serde::Deserialize;
 use warp::{Filter, Reply, Rejection, path, get, any, query};
 use crate::AppStore;
 use super::handlers;

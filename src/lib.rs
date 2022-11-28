@@ -20,21 +20,21 @@ pub fn get_text(element: &ElementRef) -> String {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Content {
-    pub news: Vec<String>,
     pub date: String,
     pub weekday: String,
-    pub content: Vec<HashMap<String, String>>,
-    pub week_type: String
+    pub week_type: String,
+    pub news: Vec<String>,
+    pub content: Vec<HashMap<String, String>>
 }
 
 impl Content {
     pub fn default() -> Content {
         Content {
-            news: vec![],
             date: "".to_string(),
             weekday: "".to_string(),
-            content: vec![],
-            week_type: "".to_string()
+            week_type: "".to_string(),
+            news: vec![],
+            content: vec![]
         }
     }
 }
@@ -42,9 +42,9 @@ impl Content {
 #[derive(Clone, Debug, Serialize)]
 pub struct Plan {
     pub url: String,
+    pub last_updated: String,
     pub current: Content,
-    pub upcoming: Content,
-    pub last_updated: String
+    pub upcoming: Content
 }
 
 #[derive(Clone, Debug)]
