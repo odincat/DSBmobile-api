@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use scraper::{Html, Selector};
 use crate::{Content, err_panic, get_text};
 
@@ -170,12 +170,12 @@ impl UntisParser {
         return (current_news, upcoming_news);
     }
 
-    fn parse_content(&self, document: &Html, versions: &TableVersions) -> (Vec<HashMap<String, String>>, Vec<HashMap<String, String>>) {
+    fn parse_content(&self, document: &Html, versions: &TableVersions) -> (Vec<BTreeMap<String, String>>, Vec<BTreeMap<String, String>>) {
         let center_selector = Selector::parse("center").unwrap();
         let content_table_selector = Selector::parse("table.mon_list").unwrap();
 
-        let mut current_content: Vec<HashMap<String, String>> = vec![];
-        let mut upcoming_content: Vec<HashMap<String, String>> = vec![];
+        let mut current_content: Vec<BTreeMap<String, String>> = vec![];
+        let mut upcoming_content: Vec<BTreeMap<String, String>> = vec![];
 
         let mut table_headers: Vec<String> = vec![];
 
@@ -189,13 +189,13 @@ impl UntisParser {
                 }
             
                 // Table content
-                let mut items: Vec<HashMap<String, String>> = vec![];
+                let mut items: Vec<BTreeMap<String, String>> = vec![];
 
                 let tr_content_selector = Selector::parse("tr.list").unwrap();
                 for tr in content_table.select(&tr_content_selector) {
                     let td_selector = Selector::parse("td").unwrap();
 
-                    let mut item: HashMap<String, String> = HashMap::new();
+                    let mut item: BTreeMap<String, String> = BTreeMap::new();
 
                     for (td_index, td) in tr.select(&td_selector).enumerate() {
                         let text = get_text(&td).to_lowercase();
@@ -206,7 +206,7 @@ impl UntisParser {
                     if item.is_empty() {
                         continue;
                     }
-
+                    println!("{:?}", &item);
                     items.push(item);
                 }
 

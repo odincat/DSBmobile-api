@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::{HashMap, BTreeMap}, sync::Arc};
 
 use scraper::ElementRef;
 use serde::Serialize;
@@ -24,7 +24,7 @@ pub struct Content {
     pub weekday: String,
     pub week_type: String,
     pub news: Vec<String>,
-    pub content: Vec<HashMap<String, String>>
+    pub content: Vec<BTreeMap<String, String>>
 }
 
 impl Content {
