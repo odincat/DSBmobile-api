@@ -19,7 +19,7 @@ pub async fn serve_school(school: String, query: HashMap<String, String>, store:
         let class_query = class_query.split(",");
         
         plan.current.content.retain(|item| {
-            let class_string = item.get("klasse(n)").unwrap();
+            let class_string = item.get("klasse(n)").unwrap().to_lowercase();
             
             let mut ret = false;
 

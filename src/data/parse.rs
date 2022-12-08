@@ -198,7 +198,7 @@ impl UntisParser {
                     let mut item: BTreeMap<String, String> = BTreeMap::new();
 
                     for (td_index, td) in tr.select(&td_selector).enumerate() {
-                        let text = get_text(&td).to_lowercase();
+                        let text = get_text(&td);
 
                         item.insert(table_headers[td_index].to_owned(), text);
                     }
@@ -206,7 +206,6 @@ impl UntisParser {
                     if item.is_empty() {
                         continue;
                     }
-                    println!("{:?}", &item);
                     items.push(item);
                 }
 
