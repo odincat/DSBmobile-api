@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use log::info;
 use reqwest::Client;
 
-use crate::{config::Config, Store, data::requests::{TokenRequest, PlanRequest}, Content, Plan, data::parse::UntisParser};
+use crate::{config::Config, Store, data::requests::{TokenRequest, PlanRequest}, Plan, data::parse::UntisParser, PlanContent};
 
 pub async fn fetch_and_parse (config: &Config) -> Store {
     let mut store = Store {
@@ -30,8 +30,8 @@ pub async fn fetch_and_parse (config: &Config) -> Store {
                 let mut plan_object = Plan {
                     last_updated: last_updated.to_string(),
                     url: url.to_string(),
-                    current: Content::default(),
-                    upcoming: Content::default() 
+                    current: PlanContent::default(),
+                    upcoming: PlanContent::default() 
                 };
 
                 let client = Client::new();

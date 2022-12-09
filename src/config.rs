@@ -2,7 +2,7 @@ use std::fs::read_to_string;
 use serde::Deserialize;
 use toml::from_str;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct SchoolProvider {
     pub username: String,
     pub password: String, 
@@ -10,20 +10,20 @@ pub struct SchoolProvider {
     pub url_identifier: String 
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Server {
     pub port: u16,
     pub host: String,
     pub refetch_interval: u64
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Keys {
     pub enabled: bool,
     pub allowed: Vec<String>
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub log_file: String,
     pub log_level: String, //TODO: impl 

@@ -1,11 +1,11 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use scraper::{Html, Selector};
-use crate::{Content, err_panic, get_text};
+use crate::{err_panic, get_text, PlanContent};
 
 #[derive(Debug)]
 pub struct UntisParserResult {
-    pub current: Content,
-    pub upcoming: Content 
+    pub current: PlanContent,
+    pub upcoming: PlanContent
 }
 
 pub struct UntisParser {
@@ -223,6 +223,38 @@ impl UntisParser {
         (current_content, upcoming_content)
     }
 
+    fn get_affected_classes(&self, content: &(Vec<BTreeMap<String, String>>, Vec<BTreeMap<String, String>>)) -> (Vec<String>, Vec<String>) {
+        let (mut currently_affected, mut upcoming_affected) = (Vec::<String>::new(), Vec::<String>::new());
+        let plan_content = vec![content.0.clone(), content.1.clone()];
+
+        for (index, content_map) in plan_content.iter().enumerate() {
+            let raw_classes: Vec<String> = content_map.iter().map(|item| {
+                item.get("klasse(n)").unwrap().to_string()
+            }).collect();
+
+            let mut classes = BTreeSet::<String>::new();
+
+            for class in raw_classes {
+                for single_class in class.split(",") {
+                    let single_class = single_class.trim().to_string();
+
+                    classes.insert(single_class);
+                }
+            }
+
+            if index == 0 {
+                currently_affected = classes.into_iter().collect();
+            } else if index == 1 {
+                upcoming_affected = classes.into_iter().collect();
+            }
+        }
+
+        println!("{:?}", currently_affected);
+        println!("{:?}", upcoming_affected);
+
+        (currently_affected, upcoming_affected)
+    }
+
     pub async fn execute(&self) -> UntisParserResult {
         if self.document.len() == 0 {
             err_panic("HTML document in form of a string must be supplied");
@@ -236,21 +268,24 @@ impl UntisParser {
         let week_type = self.parse_week_type(&document, &table_versions);
         let news = self.parse_news(&document, &table_versions);
         let content = self.parse_content(&document, &table_versions);
+        let affected_classes = self.get_affected_classes(&content);
 
         UntisParserResult {
-            current: Content {
+            current: PlanContent{
                 content: content.0,
                 date: date.0,
                 news: news.0,
                 week_type: week_type.0,
-                weekday: weekday.0
+                weekday: weekday.0,
+                affected_classes: affected_classes.0
             },
-            upcoming: Content {
+            upcoming: PlanContent{
                 content: content.1,
                 date: date.1,
                 news: news.1,
                 week_type: week_type.1,
-                weekday: weekday.1
+                weekday: weekday.1,
+                affected_classes: affected_classes.1
             }
         }
     }

@@ -1,15 +1,8 @@
-use dsb_rs::{api::routes::get_school, config::Config, data::routines::fetch_and_parse, Store};
-use lazy_static::lazy_static;
+use axum::Server;
+use dsb_rs::{api::routes::app, config::Config, data::routines::fetch_and_parse, Store};
 use simplelog::{LevelFilter, TermLogger};
 use std::{collections::HashMap, sync::Arc};
 use tokio::{sync::Mutex, task, time};
-
-lazy_static! {
-    pub static ref CONFIG: Config = {
-        let config = Config::load();
-        config
-    };
-}
 
 #[tokio::main]
 async fn main() {
@@ -38,6 +31,7 @@ async fn main() {
     let store = Arc::new(store);
 
     let thread_store = store.clone();
+    let thread_config = config.clone();
     let _refetch = task::spawn(async move {
         let mut interval =
             time::interval(time::Duration::from_secs(config.server.refetch_interval));
@@ -46,15 +40,15 @@ async fn main() {
             interval.tick().await;
             println!("Refetching...");
 
-            let new_store = fetch_and_parse(&CONFIG).await;
+            let new_store = fetch_and_parse(&thread_config).await;
             let mut store = thread_store.lock().await;
             *store = new_store;
         }
     });
 
-    // let parsed_host: Vec<i32> = config.server.host.split(".").map(|s| s.parse().expect("unable to parse host (expected number, found string")).collect();
-
-    warp::serve(get_school(store.clone()))
-        .run(([127, 0, 0, 1], config.server.port))
-        .await;
+    let host = format!("{}:{}", &config.server.host, &config.server.port.to_string());
+    Server::bind(&host.parse().unwrap())
+        .serve(app(store.clone()).into_make_service())
+        .await
+        .unwrap();
 }
