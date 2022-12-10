@@ -14,8 +14,19 @@ pub fn err_panic(err: &str) {
 }
 
 pub fn get_text(element: &ElementRef) -> String {
-    let text = element.text().collect::<Vec<_>>()[0].to_string();
-    text
+    element.text().collect::<Vec<_>>()[0].to_string()
+}
+
+#[macro_export]
+macro_rules! derive_alias {
+    ($name:ident => #[derive($($derive:ident),*)]) => {
+        macro_rules! $name {
+            ($i:item) => {
+                #[derive($($derive),*)]
+                $i
+            }
+        }
+    }
 }
 
 pub type SubstitutionPlanContent = Vec<BTreeMap<String, String>>;
@@ -54,6 +65,14 @@ pub struct Plan {
 #[derive(Clone, Debug)]
 pub struct Store {
     pub plans: HashMap<String, Plan>
+}
+
+impl Store {
+    pub fn default() -> Store {
+        Store {
+            plans: HashMap::new()
+        }
+    }
 }
 
 pub type AppStore = Arc<Mutex<Store>>;

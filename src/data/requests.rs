@@ -1,6 +1,6 @@
-use reqwest::Client;
+use anyhow::{bail, Context, Result};
+use reqwest::get;
 use serde_json::Value;
-use crate::err_panic;
 
 pub struct TokenRequest {
     pub username: String,
@@ -8,25 +8,27 @@ pub struct TokenRequest {
 }
 
 impl TokenRequest {
-    fn build_url(&self) -> String {
+    fn build_url(&self) -> Result<String> {
         if(self.username.len() == 0) || (self.password.len() == 0) {
-            err_panic("Username or password is empty");
+            bail!("Username or password is empty, please check your config file")
         }
 
-        let base_url = "https://mobileapi.dsbcontrol.de/authid";
-        let additional_params = "&bundleid=de.heinekingmedia.dsbmobile&appversion=35&osversion=22&pushid";
+        const BASE_URL: &str = "https://mobileapi.dsbcontrol.de/authid";
+        const ADDITIONAL_PARAMS: &str = "&bundleid=de.heinekingmedia.dsbmobile&appversion=35&osversion=22&pushid";
 
-        return format!("{}/?user={}&password={}&{}", base_url, self.username, self.password, additional_params);
+        Ok(format!("{}/?user={}&password={}&{}", BASE_URL, self.username, self.password, ADDITIONAL_PARAMS))
     }
 
-    pub async fn execute(&self) -> String {
-        let url = self.build_url();
-        let client = Client::new();
+    pub async fn execute(&self) -> Result<String> {
+        let url = self.build_url()?;
 
-        let response = client.get(url).send().await.unwrap().text().await.unwrap();
-        let parsed_response: String = serde_json::from_str(response.as_str()).unwrap();
+        let response = get(&url).await
+            .with_context(|| format!("Failed to fetch token from: {}", &url))? 
+            .text().await?;
 
-        return parsed_response;
+        let parsed_response: String = serde_json::from_str(response.as_str())?;
+
+        Ok(parsed_response)
     }
 }
 
@@ -35,23 +37,25 @@ pub struct PlanRequest {
 }
 
 impl PlanRequest {
-    fn build_url(&self) -> String {
+    fn build_url(&self) -> Result<String> {
         if self.token.len() == 0 {
-            err_panic("Token must be supplied");
+            bail!("Token must be supplied")
         }
 
-        let base_url = "https://mobileapi.dsbcontrol.de/dsbtimetables";
+        const BASE_URL: &str = "https://mobileapi.dsbcontrol.de/dsbtimetables";
 
-        return format!("{}/?authid={}", base_url, self.token);
+        Ok(format!("{}/?authid={}", BASE_URL, self.token))
     }
 
-    pub async fn execute(&self) -> Value {
-        let url = self.build_url();
-        let client = Client::new();
+    pub async fn execute(&self) -> Result<Value> {
+        let url = self.build_url().unwrap();
 
-        let response = client.get(url).send().await.unwrap().text().await.unwrap();
+        let response = get(&url).await
+            .with_context(|| format!("Failed to fetch plans from: {}", &url))?
+            .text().await?;
+
         let parsed_response: Value = serde_json::from_str(response.as_str()).unwrap();
 
-        return parsed_response;
+        Ok(parsed_response)
     }
 }

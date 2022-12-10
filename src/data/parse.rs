@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use scraper::{Html, Selector};
-use crate::{err_panic, get_text, PlanContent};
+use crate::{err_panic, get_text, PlanContent, SubstitutionPlanContent};
 
 #[derive(Debug)]
 pub struct UntisParserResult {
@@ -223,7 +223,7 @@ impl UntisParser {
         (current_content, upcoming_content)
     }
 
-    fn get_affected_classes(&self, content: &(Vec<BTreeMap<String, String>>, Vec<BTreeMap<String, String>>)) -> (Vec<String>, Vec<String>) {
+    fn get_affected_classes(&self, content: &(SubstitutionPlanContent, SubstitutionPlanContent)) -> (Vec<String>, Vec<String>) {
         let (mut currently_affected, mut upcoming_affected) = (Vec::<String>::new(), Vec::<String>::new());
         let plan_content = vec![content.0.clone(), content.1.clone()];
 
@@ -248,9 +248,6 @@ impl UntisParser {
                 upcoming_affected = classes.into_iter().collect();
             }
         }
-
-        println!("{:?}", currently_affected);
-        println!("{:?}", upcoming_affected);
 
         (currently_affected, upcoming_affected)
     }
