@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package untis;
+
+// This an implementation specific for my usecase with hardcoded keys.
+message Substitution {
+    string klasse = 1;
+    string stunde = 2;
+    string fach = 3;
+    string fach_alt = 4;
+    string raum = 5;
+    string raum_alt = 6;
+    string vertr_von = 7;
+    string art = 8;
+    string text = 9;
+}
+
+message Plan {
+    string date = 1;
+    string weekday = 2;
+    string week_type = 3;
+    repeated string news = 4;
+    repeated string affected_classes = 5;
+    repeated Substitution content = 6;
+}
+
+message Overview {
+    string url = 1;
+    string last_updated = 2;
+    Plan current = 3;
+    Plan upcoming = 4;
+}

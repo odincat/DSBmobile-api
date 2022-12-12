@@ -1,6 +1,7 @@
+use anyhow::{bail, Context, Result};
 use std::collections::{BTreeMap, BTreeSet};
-use scraper::{Html, Selector};
-use crate::{err_panic, get_text, PlanContent, SubstitutionPlanContent};
+use scraper::{Html, Selector, ElementRef};
+use crate::{get_text, PlanContent, SubstitutionPlanContent, ValuePair, some_or_bail};
 
 #[derive(Debug)]
 pub struct UntisParserResult {
@@ -8,15 +9,41 @@ pub struct UntisParserResult {
     pub upcoming: PlanContent
 }
 
+struct CenterParseResult {
+    date: ValuePair<DateParseResult>,
+    news: ValuePair<Vec<String>>,
+    content: ValuePair<Vec<BTreeMap<String, String>>>
+}
+impl CenterParseResult {
+    pub fn default() -> CenterParseResult {
+        CenterParseResult {
+            date: (DateParseResult::default(), DateParseResult::default()),
+            news: (vec![], vec![]),
+            content: (vec![], vec![])
+        }
+    }
+} 
+
+struct DateParseResult {
+    date: String,
+    weekday: String,
+    week_type: String
+}
+impl DateParseResult {
+    pub fn default() -> DateParseResult {
+        let default_string = "".to_string();
+        DateParseResult { date: default_string.clone(), weekday: default_string.clone(), week_type: default_string.clone()  }
+    }
+}
+
+// see rant
+type TableVersions = (Vec<usize>, Vec<usize>);
+
 pub struct UntisParser {
     pub document: String
 }
-
-// see line 19
-type TableVersions = (Vec<usize>, Vec<usize>);
-
 impl UntisParser {
-    // For some fucking, ungodly reason are multiple pages being created when there are too many
+    // For some fucking, ungodly reason multiple pages are being created when there are too many
     // rows in one table. (Just why?! (╯°□°)╯︵ ┻━┻ We have unlimited vertical space!!). So we (the poor developer :C)
     // have to write some ~~stupid~~ **inconvenient** workaround:
     // First we are looping over all "center" elements and see if they have a ".mon_title" in them and
@@ -28,7 +55,7 @@ impl UntisParser {
     // Now whenever we loop over the center elements of the page we know exactly where the content
     // belongs - or if it's just an advert link to the untis website. (:ThisIsFine:)
     //
-    // Honestly, this is the most unpleasing parsing experience I've ever had. (Could be a lot worse though,
+    // Honestly, this is the most unsatisfying parsing experience I've ever had. (Could be a lot worse though,
     // at least there are some classnames ready for use :shrug:).
     fn parse_table_versions(&self, document: &Html) -> TableVersions {
         let mut current_center_index: Vec<usize> = vec![];
@@ -66,164 +93,91 @@ impl UntisParser {
         (current_center_index, upcoming_center_index)
     }
 
-    fn parse_date(&self, document: &Html, versions: &TableVersions) -> (String, String) {
-        let center_selector = Selector::parse("center").unwrap();
+    fn parse_date(&self, center_element: &ElementRef) -> DateParseResult {
         let date_selector = Selector::parse("div.mon_title").unwrap();
 
-        let mut current_date = "".to_owned();
-        let mut upcoming_date = "".to_owned();
+        let date_element = some_or_bail!(center_element.select(&date_selector).next(), DateParseResult::default());
 
-        for (center_index, center_element) in document.select(&center_selector).enumerate() {
-            for date_item in center_element.select(&date_selector) {
-                let date = get_text(&date_item);
-                let date = date.split(" ").collect::<Vec<&str>>()[0].to_owned();
+        let date_element_text = get_text(&date_element);
 
-                if versions.0.contains(&center_index) {
-                    current_date = date;
-                } else if versions.1.contains(&center_index) {
-                    upcoming_date = date;
-                } else {
-                    todo!("error")
-                }
-            }
+        let date = date_element_text.split(" ").collect::<Vec<&str>>()[0].to_owned();
+
+        let weekday = date_element_text.split(" ").collect::<Vec<&str>>()[1].to_string();
+        let weekday = weekday.split(",").collect::<Vec<&str>>()[0].to_string();
+
+        let week_type = date_element_text.split(" ").collect::<Vec<&str>>()[3].to_string();
+
+        DateParseResult {
+            date,
+            weekday,
+            week_type
         }
-
-        (current_date, upcoming_date)
     }
 
-    fn parse_weekday(&self, document: &Html, versions: &TableVersions) -> (String, String) {
-        let center_selector = Selector::parse("center").unwrap();
-        let date_selector = Selector::parse("div.mon_title").unwrap();
-
-        let mut current_weekday = "".to_owned();
-        let mut upcoming_weekday = "".to_owned();
-
-        for (center_index, center_element) in document.select(&center_selector).enumerate() {
-            for weekday_item in center_element.select(&date_selector) {
-                let weekday = get_text(&weekday_item);
-                let weekday = weekday.split(" ").collect::<Vec<&str>>()[1].to_string();
-                let weekday = weekday.split(",").collect::<Vec<&str>>()[0].to_string();
-
-                if versions.0.contains(&center_index) {
-                    current_weekday = weekday;
-                } else if versions.1.contains(&center_index) {
-                    upcoming_weekday = weekday;
-                } else {
-                    todo!("error")
-                }
-            }
-        }
-
-        (current_weekday, upcoming_weekday)
-    }
-
-    fn parse_week_type(&self, document: &Html, versions: &TableVersions) -> (String, String) {
-        let center_selector = Selector::parse("center").unwrap();
-        let date_selector = Selector::parse("div.mon_title").unwrap();
-
-        let mut current_week_type = "".to_owned();
-        let mut upcoming_week_type = "".to_owned();
-
-        for (center_index, center_element) in document.select(&center_selector).enumerate() {
-            for date_item in center_element.select(&date_selector) {
-                let week_type = get_text(&date_item);
-                let week_type = week_type.split(" ").collect::<Vec<&str>>()[3].to_string();
-
-                if versions.0.contains(&center_index) {
-                    current_week_type = week_type.to_owned();
-                } else if versions.1.contains(&center_index) {
-                    upcoming_week_type = week_type.to_owned();
-                } else {
-                    todo!("error")
-                }
-            }
-        }
-
-        (current_week_type, upcoming_week_type)
-    }
-
-    fn parse_news(&self, document: &Html, versions: &TableVersions) -> (Vec<String>, Vec<String>) {
-        let center_selector = Selector::parse("center").unwrap();
+    fn parse_news(&self, center_element: &ElementRef) -> Vec<String> {
         let news_table_selector = Selector::parse("table.info").unwrap();
 
-        let mut current_news: Vec<String> = vec![];
-        let mut upcoming_news: Vec<String> = vec![];
+        // let news_table_element = match center_element.select(&news_table_selector).next() {
+        //     Some(element) => element,
+        //     // We can return anything, because it will not be further evaluated / used.
+        //     None => return vec![]
+        // };
 
-        for (center_index, center_element) in document.select(&center_selector).enumerate() {
-            for news_table in center_element.select(&news_table_selector) {
-                let news_item_selector = Selector::parse("tbody tr.info td.info").unwrap();
+        let news_table_element = some_or_bail!(center_element.select(&news_table_selector).next(), vec![]);
 
-                for news_item in news_table.select(&news_item_selector) {
-                    let news_item_text = news_item.text().collect::<Vec<_>>().join(" ");
+        let mut news: Vec<String> = vec![];
 
-                    if versions.0.contains(&center_index) {
-                        current_news.push(news_item_text);
-                    } else if versions.1.contains(&center_index) {
-                        upcoming_news.push(news_item_text);
-                    } else {
-                        todo!("error")
-                    }
-                }
-            }
+        let news_item_selector = Selector::parse("tbody tr.info td.info").unwrap();
+
+        for news_item in news_table_element.select(&news_item_selector) {
+            let news_item_text = news_item.text().collect::<Vec<_>>().join(" ");
+            //TODO: remove newline characters
+            news.push(news_item_text);
         }
         
-        return (current_news, upcoming_news);
+        news
     }
 
-    fn parse_content(&self, document: &Html, versions: &TableVersions) -> (Vec<BTreeMap<String, String>>, Vec<BTreeMap<String, String>>) {
-        let center_selector = Selector::parse("center").unwrap();
+    fn parse_content(&self, center_element: &ElementRef) -> Vec<BTreeMap<String, String>> {
         let content_table_selector = Selector::parse("table.mon_list").unwrap();
 
-        let mut current_content: Vec<BTreeMap<String, String>> = vec![];
-        let mut upcoming_content: Vec<BTreeMap<String, String>> = vec![];
+        let content_table_element = some_or_bail!(center_element.select(&content_table_selector).next(), vec![]);
 
+        // Table headers
         let mut table_headers: Vec<String> = vec![];
 
-        for (center_index, center_element) in document.select(&center_selector).enumerate() {
-            for content_table in center_element.select(&content_table_selector) {
-                // Table headers
-                let th_selector = Selector::parse("tr.list > th.list").unwrap();
-                for th in content_table.select(&th_selector) {
-                    let text = get_text(&th).to_lowercase();
-                    table_headers.push(text);
-                }
-            
-                // Table content
-                let mut items: Vec<BTreeMap<String, String>> = vec![];
+        let th_selector = Selector::parse("tr.list > th.list").unwrap();
 
-                let tr_content_selector = Selector::parse("tr.list").unwrap();
-                for tr in content_table.select(&tr_content_selector) {
-                    let td_selector = Selector::parse("td").unwrap();
-
-                    let mut item: BTreeMap<String, String> = BTreeMap::new();
-
-                    for (td_index, td) in tr.select(&td_selector).enumerate() {
-                        let text = get_text(&td);
-
-                        item.insert(table_headers[td_index].to_owned(), text);
-                    }
-
-                    if item.is_empty() {
-                        continue;
-                    }
-                    items.push(item);
-                }
-
-
-                if versions.0.contains(&center_index) {
-                    current_content.extend(items);
-                } else if versions.1.contains(&center_index) {
-                    upcoming_content.extend(items);
-                } else {
-                    todo!("error")
-                }
-            }
+        for th in content_table_element.select(&th_selector) {
+            let text = get_text(&th).to_lowercase();
+            table_headers.push(text);
         }
+    
+        // Table content
+        let mut items: Vec<BTreeMap<String, String>> = vec![];
 
-        (current_content, upcoming_content)
+        let tr_content_selector = Selector::parse("tr.list").unwrap();
+        for tr in content_table_element.select(&tr_content_selector) {
+            let td_selector = Selector::parse("td").unwrap();
+
+            let mut item: BTreeMap<String, String> = BTreeMap::new();
+
+            for (td_index, td) in tr.select(&td_selector).enumerate() {
+                let text = get_text(&td);
+
+                item.insert(table_headers[td_index].to_owned(), text);
+            }
+
+            if item.is_empty() {
+                continue;
+            }
+            items.push(item);
+        }
+        
+        items
     }
 
-    fn get_affected_classes(&self, content: &(SubstitutionPlanContent, SubstitutionPlanContent)) -> (Vec<String>, Vec<String>) {
+    fn get_affected_classes(&self, content: &ValuePair<SubstitutionPlanContent>) -> ValuePair<Vec<String>> {
         let (mut currently_affected, mut upcoming_affected) = (Vec::<String>::new(), Vec::<String>::new());
         let plan_content = vec![content.0.clone(), content.1.clone()];
 
@@ -252,38 +206,65 @@ impl UntisParser {
         (currently_affected, upcoming_affected)
     }
 
-    pub async fn execute(&self) -> UntisParserResult {
+    fn center_section_parse(&self, document: &Html, versions: &TableVersions) -> Result<CenterParseResult> {
+        let center_selector = Selector::parse("center").unwrap();
+
+        let (current_version, upcoming_version) = versions;
+
+        let mut parse_result = CenterParseResult::default();
+
+        for (center_index, center_element) in document.select(&center_selector).enumerate() {
+            if !current_version.contains(&center_index) && !upcoming_version.contains(&center_index) {
+                continue;
+            }
+
+            let date = self.parse_date(&center_element);
+            let news = self.parse_news(&center_element);
+            let content = self.parse_content(&center_element);
+
+            if current_version.contains(&center_index) {
+                parse_result.date.0 = date;
+                parse_result.news.0 = news;
+                parse_result.content.0 = content;
+            } else if upcoming_version.contains(&center_index) {
+                parse_result.date.1 = date;
+                parse_result.news.1 = news;
+                parse_result.content.1 = content
+            }
+        }
+
+        Ok(parse_result)
+    }
+
+    pub async fn execute(&self) -> Result<UntisParserResult> {
         if self.document.len() == 0 {
-            err_panic("HTML document in form of a string must be supplied");
+            bail!("HTML document in form of a string must be supplied");
         }
 
         let document = Html::parse_document(&self.document);
 
         let table_versions = self.parse_table_versions(&document);
-        let date = self.parse_date(&document, &table_versions);
-        let weekday = self.parse_weekday(&document, &table_versions);
-        let week_type = self.parse_week_type(&document, &table_versions);
-        let news = self.parse_news(&document, &table_versions);
-        let content = self.parse_content(&document, &table_versions);
+        let CenterParseResult { date, news, content } = self.center_section_parse(&document, &table_versions)?;
         let affected_classes = self.get_affected_classes(&content);
 
-        UntisParserResult {
-            current: PlanContent{
+        // recap: 0 is the current plan and 1 is the upcoming one
+        Ok(UntisParserResult {
+            current: PlanContent {
                 content: content.0,
-                date: date.0,
+                date: date.0.date,
                 news: news.0,
-                week_type: week_type.0,
-                weekday: weekday.0,
+                week_type: date.0.week_type,
+                weekday: date.0.weekday,
                 affected_classes: affected_classes.0
             },
-            upcoming: PlanContent{
+            upcoming: PlanContent {
                 content: content.1,
-                date: date.1,
+                date: date.1.date,
                 news: news.1,
-                week_type: week_type.1,
-                weekday: weekday.1,
+                week_type: date.1.week_type,
+                weekday: date.1.weekday,
                 affected_classes: affected_classes.1
             }
-        }
+        })
     }
 }

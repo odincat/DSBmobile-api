@@ -8,10 +8,7 @@ pub mod data;
 pub mod api;
 pub mod config;
 
-pub fn err_panic(err: &str) {
-    log::error!("PANIC: {}", err);
-    panic!("{}", err);
-}
+pub mod protobuf;
 
 pub fn get_text(element: &ElementRef) -> String {
     element.text().collect::<Vec<_>>()[0].to_string()
@@ -28,6 +25,20 @@ macro_rules! derive_alias {
         }
     }
 }
+
+#[macro_export]
+macro_rules! some_or_bail {
+    ($option:expr, $fallback:expr) => {
+        match $option{
+            Some(value) => value,
+            None => return $fallback 
+        }
+    }
+}
+
+/// Utility type representing the current (0) and the upcoming (1) plan
+/// (current, upcoming)
+pub type ValuePair<T> = (T, T);
 
 pub type SubstitutionPlanContent = Vec<BTreeMap<String, String>>;
 

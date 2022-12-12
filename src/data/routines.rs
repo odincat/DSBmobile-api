@@ -11,6 +11,7 @@ pub async fn fetch_and_parse (config: &Config) -> Result<Store> {
             username: provider.username.clone(),
             password: provider.password.clone()
         }.execute().await?;
+
         let plans = PlanRequest { token }.execute().await?;
 
         let children = plans[0]["Childs"]
@@ -42,7 +43,7 @@ pub async fn fetch_and_parse (config: &Config) -> Result<Store> {
 
                 // TODO: check for parser in config and use it accordingly to support multiple
                 // types of plans.
-                let parser = UntisParser { document: static_plan }.execute().await;
+                let parser = UntisParser { document: static_plan }.execute().await?;
 
                 let plan_object = Plan {
                     last_updated: last_updated.to_string(),

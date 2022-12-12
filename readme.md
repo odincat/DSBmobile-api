@@ -1,8 +1,11 @@
 # DSBmobile Data Server
 
 ## Todo
-- [ ] refactoring
+- [ ] refactoring (a lot)
 - [ ] error handling
+- [ ] unit / integration tests
+- [ ] API keys, to restrict access
+- [X] (sort of) return protobuf instead of json, if query parameter ?proto is present
 
 ## Finished
 - load different schools (credentials, identifier etc.) from config file
