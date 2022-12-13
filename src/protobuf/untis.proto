@@ -25,7 +25,7 @@ message Plan {
 }
 
 message Overview {
-    string url = 1;
+    string plan_url = 1;
     string last_updated = 2;
     Plan current = 3;
     Plan upcoming = 4;

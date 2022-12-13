@@ -1,7 +1,6 @@
 use anyhow::{Result, Context, bail};
-use log::info;
 use reqwest::get;
-use crate::{config::Config, Store, data::requests::{TokenRequest, PlanRequest}, Plan, data::parse::UntisParser};
+use crate::{config::Config, Store, data::requests::{TokenRequest, PlanRequest}, SchoolResource, data::parse::UntisParser};
 
 pub async fn fetch_and_parse (config: &Config) -> Result<Store> {
     let mut store = Store::default();
@@ -45,18 +44,18 @@ pub async fn fetch_and_parse (config: &Config) -> Result<Store> {
                 // types of plans.
                 let parser = UntisParser { document: static_plan }.execute().await?;
 
-                let plan_object = Plan {
+                let plan_object = SchoolResource {
                     last_updated: last_updated.to_string(),
-                    url: url.to_string(),
+                    plan_url: url.to_string(),
                     current: parser.current,
                     upcoming: parser.upcoming 
                 };
 
-                store.plans.insert(provider.url_identifier.clone(), plan_object);
+                store.schools.insert(provider.url_identifier.clone(), plan_object);
             }
         }
 
-        info!("Available titles for {}: {:?}", provider.url_identifier, available_titles);
+        println!("Available titles for {}: {:?}", provider.url_identifier, available_titles);
 
         // if avaible_titles.contains(&provider.plan_title) == false {
         //     panic!("Plan title not found");

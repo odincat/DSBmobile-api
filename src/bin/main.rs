@@ -1,27 +1,10 @@
 use axum::Server;
 use dsb_rs::{api::routes::app, config::Config, data::routines::fetch_and_parse, Store};
-use simplelog::{LevelFilter, TermLogger};
 use std::sync::Arc;
 use tokio::{sync::Mutex, task, time};
 
 #[tokio::main]
 async fn main() {
-    TermLogger::init(
-        LevelFilter::Info,
-        simplelog::Config::default(),
-        simplelog::TerminalMode::Mixed,
-        simplelog::ColorChoice::Auto,
-    )
-    .unwrap();
-
-    // if &config.log_file.is_empty() == &false {
-    //     let _ = WriteLogger::init(LevelFilter::Info, simplelog::Config::default(), std::fs::File::create(config.log_file).unwrap());
-    // }
-
-    // let mut store = Arc::new(Mutex::new(Store {
-    //     plans: HashMap::new(),
-    // }));
-
     let config = Config::load().unwrap();
 
     let store = Store::default();
@@ -52,6 +35,9 @@ async fn main() {
     // TODO: Dont't start server until data is available
 
     let host = format!("{}:{}", &config.server.host, &config.server.port.to_string());
+
+    println!("Launching server on {}", &host);
+
     Server::bind(&host.parse().unwrap())
         .serve(app(store.clone()).into_make_service())
         .await

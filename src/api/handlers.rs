@@ -1,9 +1,9 @@
 use axum::{extract::{Path, State, Query}, http::StatusCode, response::IntoResponse, Json};
-use axum_extra::protobuf as axum_protobuf;
+use axum_extra::protobuf::ProtoBuf;
 use serde::Deserialize;
-use crate::{AppStore, SubstitutionPlanContent, protobuf::{untis::{Substitution, Overview, self}, self}};
+use crate::{ArcStore, Substitutions, protobuf::{untis::{Substitution, Overview, self}, self}};
 
-fn select_classes(content: &mut SubstitutionPlanContent, classes: &Vec<&str>) -> SubstitutionPlanContent {
+fn select_classes(content: &mut Substitutions, classes: &Vec<&str>) -> Substitutions {
     content.retain(|item| {
         let item_class = item.get("klasse(n)").unwrap().to_lowercase().to_string();
         classes.iter().any(|class| item_class.contains(class.to_lowercase().as_str()))
@@ -12,7 +12,7 @@ fn select_classes(content: &mut SubstitutionPlanContent, classes: &Vec<&str>) ->
     content.clone()
 }
 
-fn remove_classes(content: &mut SubstitutionPlanContent, classes: &Vec<&str>) -> SubstitutionPlanContent {
+fn remove_classes(content: &mut Substitutions, classes: &Vec<&str>) -> Substitutions {
     content.retain(|item| {
         let item_class = item.get("klasse(n)").unwrap().to_lowercase().to_string();
         !classes.iter().any(|class| item_class.contains(class))
@@ -25,19 +25,19 @@ fn remove_classes(content: &mut SubstitutionPlanContent, classes: &Vec<&str>) ->
 pub struct SchoolObtainParams {
     pub select: Option<String>,
     pub remove: Option<String>,
-    pub proto: Option<bool>
+    pub proto: Option<String>
 }
 
-pub async fn school_obtain(Path(school_identifier): Path<String>, Query(params): Query<SchoolObtainParams>, State(store): State<AppStore>) -> impl IntoResponse {
+pub async fn school_obtain(Path(school_identifier): Path<String>, Query(params): Query<SchoolObtainParams>, State(store): State<ArcStore>) -> impl IntoResponse {
     let store = store.lock().await;
     let store = store.clone();
     println!("GET, {:?}", params);
 
-    if !store.plans.contains_key(&school_identifier) {
+    if !store.schools.contains_key(&school_identifier) {
         return (StatusCode::NOT_FOUND, "School unknown").into_response();
     }
 
-    let mut plan = store.plans.get(&school_identifier).unwrap().clone();
+    let mut plan = store.schools.get(&school_identifier).unwrap().clone();
 
     if params.remove.is_some() {
         let classes = params.remove.as_ref().unwrap().split(",").collect::<Vec<&str>>();
@@ -105,13 +105,13 @@ pub async fn school_obtain(Path(school_identifier): Path<String>, Query(params):
         let upcoming_plan = Option::from(upcoming_plan);
 
         let proto_overview = Overview {
-            url: plan.url,
+            plan_url: plan.plan_url,
             last_updated: plan.last_updated,
             current: current_plan,
             upcoming: upcoming_plan 
         };
 
-        return (StatusCode::OK, axum_protobuf::ProtoBuf(proto_overview)).into_response()
+        return (StatusCode::OK, ProtoBuf(proto_overview)).into_response()
     }
 
     (StatusCode::OK, Json(&plan)).into_response()

@@ -1,43 +1,46 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use std::collections::{BTreeMap, BTreeSet};
 use scraper::{Html, Selector, ElementRef};
-use crate::{get_text, PlanContent, SubstitutionPlanContent, ValuePair, some_or_bail};
+use crate::{get_text, Plan, Substitutions, ValuePair, some_or_bail};
 
 #[derive(Debug)]
-pub struct UntisParserResult {
-    pub current: PlanContent,
-    pub upcoming: PlanContent
+pub struct UntisOutput {
+    pub current: Plan,
+    pub upcoming: Plan
 }
 
-struct CenterParseResult {
-    date: ValuePair<DateParseResult>,
+struct DateParseOutput {
+    date: String,
+    weekday: String,
+    week_type: String
+}
+impl DateParseOutput {
+    pub fn default() -> DateParseOutput {
+        DateParseOutput {
+            date: "".to_string(),
+            weekday: "".to_string(),
+            week_type: "".to_string()
+        }
+    }
+}
+
+struct CenterOutput {
+    date: ValuePair<DateParseOutput>,
     news: ValuePair<Vec<String>>,
     content: ValuePair<Vec<BTreeMap<String, String>>>
 }
-impl CenterParseResult {
-    pub fn default() -> CenterParseResult {
-        CenterParseResult {
-            date: (DateParseResult::default(), DateParseResult::default()),
+impl CenterOutput {
+    pub fn default() -> CenterOutput {
+        CenterOutput {
+            date: (DateParseOutput::default(), DateParseOutput::default()),
             news: (vec![], vec![]),
             content: (vec![], vec![])
         }
     }
 } 
 
-struct DateParseResult {
-    date: String,
-    weekday: String,
-    week_type: String
-}
-impl DateParseResult {
-    pub fn default() -> DateParseResult {
-        let default_string = "".to_string();
-        DateParseResult { date: default_string.clone(), weekday: default_string.clone(), week_type: default_string.clone()  }
-    }
-}
-
 // see rant
-type TableVersions = (Vec<usize>, Vec<usize>);
+type TableVersions = ValuePair<Vec<usize>>;
 
 pub struct UntisParser {
     pub document: String
@@ -57,7 +60,7 @@ impl UntisParser {
     //
     // Honestly, this is the most unsatisfying parsing experience I've ever had. (Could be a lot worse though,
     // at least there are some classnames ready for use :shrug:).
-    fn parse_table_versions(&self, document: &Html) -> TableVersions {
+    fn parse_table_versions(&self, document: &Html) -> Result<TableVersions> {
         let mut current_center_index: Vec<usize> = vec![];
         let mut upcoming_center_index: Vec<usize> = vec![];
 
@@ -85,18 +88,18 @@ impl UntisParser {
                 } else if text == upcoming_date {
                     upcoming_center_index.push(center_index);
                 } else {
-                    log::error!("Could not match date string -> unable to identify plan version.");
+                    bail!("Unable to match plan date '{}' to '{}' and '{}'", &text, &current_date, &upcoming_date)
                 }
             }
         }
 
-        (current_center_index, upcoming_center_index)
+        Ok((current_center_index, upcoming_center_index))
     }
 
-    fn parse_date(&self, center_element: &ElementRef) -> DateParseResult {
+    fn parse_date(&self, center_element: &ElementRef) -> DateParseOutput {
         let date_selector = Selector::parse("div.mon_title").unwrap();
 
-        let date_element = some_or_bail!(center_element.select(&date_selector).next(), DateParseResult::default());
+        let date_element = some_or_bail!(center_element.select(&date_selector).next(), DateParseOutput::default());
 
         let date_element_text = get_text(&date_element);
 
@@ -107,7 +110,7 @@ impl UntisParser {
 
         let week_type = date_element_text.split(" ").collect::<Vec<&str>>()[3].to_string();
 
-        DateParseResult {
+        DateParseOutput {
             date,
             weekday,
             week_type
@@ -177,11 +180,11 @@ impl UntisParser {
         items
     }
 
-    fn get_affected_classes(&self, content: &ValuePair<SubstitutionPlanContent>) -> ValuePair<Vec<String>> {
+    fn get_affected_classes(&self, content: &ValuePair<Substitutions>) -> ValuePair<Vec<String>> {
         let (mut currently_affected, mut upcoming_affected) = (Vec::<String>::new(), Vec::<String>::new());
-        let plan_content = vec![content.0.clone(), content.1.clone()];
+        let plan = vec![content.0.clone(), content.1.clone()];
 
-        for (index, content_map) in plan_content.iter().enumerate() {
+        for (index, content_map) in plan.iter().enumerate() {
             let raw_classes: Vec<String> = content_map.iter().map(|item| {
                 item.get("klasse(n)").unwrap().to_string()
             }).collect();
@@ -191,6 +194,10 @@ impl UntisParser {
             for class in raw_classes {
                 for single_class in class.split(",") {
                     let single_class = single_class.trim().to_string();
+
+                    if single_class.is_empty() {
+                        continue;
+                    }
 
                     classes.insert(single_class);
                 }
@@ -206,12 +213,12 @@ impl UntisParser {
         (currently_affected, upcoming_affected)
     }
 
-    fn center_section_parse(&self, document: &Html, versions: &TableVersions) -> Result<CenterParseResult> {
+    fn center_section_parse(&self, document: &Html, versions: &TableVersions) -> Result<CenterOutput> {
         let center_selector = Selector::parse("center").unwrap();
 
         let (current_version, upcoming_version) = versions;
 
-        let mut parse_result = CenterParseResult::default();
+        let mut parse_result = CenterOutput::default();
 
         for (center_index, center_element) in document.select(&center_selector).enumerate() {
             if !current_version.contains(&center_index) && !upcoming_version.contains(&center_index) {
@@ -236,20 +243,20 @@ impl UntisParser {
         Ok(parse_result)
     }
 
-    pub async fn execute(&self) -> Result<UntisParserResult> {
+    pub async fn execute(&self) -> Result<UntisOutput> {
         if self.document.len() == 0 {
             bail!("HTML document in form of a string must be supplied");
         }
 
         let document = Html::parse_document(&self.document);
 
-        let table_versions = self.parse_table_versions(&document);
-        let CenterParseResult { date, news, content } = self.center_section_parse(&document, &table_versions)?;
+        let table_versions = self.parse_table_versions(&document)?;
+        let CenterOutput { date, news, content } = self.center_section_parse(&document, &table_versions)?;
         let affected_classes = self.get_affected_classes(&content);
 
         // recap: 0 is the current plan and 1 is the upcoming one
-        Ok(UntisParserResult {
-            current: PlanContent {
+        Ok(UntisOutput {
+            current: Plan {
                 content: content.0,
                 date: date.0.date,
                 news: news.0,
@@ -257,7 +264,7 @@ impl UntisParser {
                 weekday: date.0.weekday,
                 affected_classes: affected_classes.0
             },
-            upcoming: PlanContent {
+            upcoming: Plan {
                 content: content.1,
                 date: date.1.date,
                 news: news.1,

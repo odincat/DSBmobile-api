@@ -41,7 +41,7 @@ pub struct Plan {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Overview {
     #[prost(string, tag = "1")]
-    pub url: ::prost::alloc::string::String,
+    pub plan_url: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
     pub last_updated: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "3")]
