@@ -1,4 +1,4 @@
-use std::{env, path::Path};
+use std::path::Path;
 use prost_build::Config;
 use std::{io::Result, fs};
 
@@ -32,16 +32,13 @@ fn main() {
         _ => {}
     };
 
+    let input_files = &["src/protobuf/untis.proto"];
     let output_directory = Path::new("src/protobuf");
 
     let mut prost = Config::new();
-    prost.out_dir(output_directory);
-
-    let input_files = &[
-        "src/protobuf/untis.proto"    
-    ];
-
-    prost.compile_protos(input_files, &[""]).unwrap();
+    prost.out_dir(output_directory)
+        .compile_protos(input_files, &[""])
+        .unwrap();
 
     rename_prost_generated_filenames(&output_directory).unwrap();
 }

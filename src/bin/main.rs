@@ -32,7 +32,16 @@ async fn main() {
         }
     });
 
-    // TODO: Dont't start server until data is available
+    loop {
+        let store_data = store.lock().await;
+        if store_data.plans.is_empty() {
+            println!("hi");
+            break;
+        }
+
+        std::thread::sleep(Duration::from_millis(500));
+    }
+
 
     let host = format!("{}:{}", &config.server.host, &config.server.port.to_string());
 
