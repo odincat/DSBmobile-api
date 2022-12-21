@@ -1,7 +1,7 @@
 use axum::{extract::{Path, State, Query}, http::StatusCode, response::IntoResponse, Json};
 use axum_extra::protobuf::ProtoBuf;
 use serde::Deserialize;
-use crate::{AppStore, SubstitutionPlanContent, protobuf::untis};
+use crate::{ArcStore, Substitutions, protobuf::untis};
 
 fn select_classes(content: &mut Substitutions, classes: &Vec<&str>) -> Substitutions {
     content.retain(|item| {
@@ -15,6 +15,7 @@ fn select_classes(content: &mut Substitutions, classes: &Vec<&str>) -> Substitut
 fn remove_classes(content: &mut Substitutions, classes: &Vec<&str>) -> Substitutions {
     content.retain(|item| {
         let item_class = item.get("klasse(n)").unwrap().to_lowercase().to_string();
+
         !classes.iter().any(|class| item_class.contains(class))
     });
 
@@ -105,7 +106,7 @@ pub async fn school_obtain(Path(school_identifier): Path<String>, Query(params):
         let upcoming_plan = Option::from(upcoming_plan);
 
         let proto_overview = untis::Overview {
-            url: plan.url,
+            plan_url: plan.plan_url,
             last_updated: plan.last_updated,
             current: current_plan,
             upcoming: upcoming_plan 

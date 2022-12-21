@@ -1,6 +1,6 @@
 use axum::Server;
 use dsb_rs::{api::routes::app, config::Config, data::routines::fetch_and_parse, Store};
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 use tokio::{sync::Mutex, task, time};
 
 #[tokio::main]
@@ -31,17 +31,6 @@ async fn main() {
             *store = new_store;
         }
     });
-
-    loop {
-        let store_data = store.lock().await;
-        if store_data.plans.is_empty() {
-            println!("hi");
-            break;
-        }
-
-        std::thread::sleep(Duration::from_millis(500));
-    }
-
 
     let host = format!("{}:{}", &config.server.host, &config.server.port.to_string());
 

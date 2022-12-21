@@ -59,3 +59,34 @@ impl PlanRequest {
         Ok(parsed_response)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{TokenRequest, PlanRequest};
+
+    #[test]
+    fn token_input_check () {
+        let token_request = TokenRequest {
+            username: "".to_string(),
+            password: "".to_string()
+        };
+
+        assert!(token_request.build_url().is_err());
+
+        let token_request = TokenRequest {
+            username: "1111".to_string(),
+            password: "".to_string()
+        };
+
+        assert!(token_request.build_url().is_err())
+    }
+
+    #[test]
+    fn plan_input_check () {
+        let plan_request = PlanRequest {
+            token: "".to_string()
+        };
+
+        assert!(plan_request.build_url().is_err())
+    }
+}

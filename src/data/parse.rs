@@ -9,6 +9,7 @@ pub struct UntisOutput {
     pub upcoming: Plan
 }
 
+#[derive(Debug, PartialEq)]
 struct DateParseOutput {
     date: String,
     weekday: String,
@@ -46,7 +47,10 @@ pub struct UntisParser {
     pub document: String
 }
 impl UntisParser {
-    // For some fucking, ungodly reason multiple pages are being created when there are too many
+    // For future reference: This was me just spitting out my thoughts, because I didn't realize
+    // that this was a thing. (Obviously caused a bug that took some time to fix). Don't take it seriously!
+    //
+    // For some ungodly reason multiple pages are being created when there are too many
     // rows in one table. (Just why?! (╯°□°)╯︵ ┻━┻ We have unlimited vertical space!!). So we (the poor developer :C)
     // have to write some ~~stupid~~ **inconvenient** workaround:
     // First we are looping over all "center" elements and see if they have a ".mon_title" in them and
@@ -120,12 +124,6 @@ impl UntisParser {
     fn parse_news(&self, center_element: &ElementRef) -> Vec<String> {
         let news_table_selector = Selector::parse("table.info").unwrap();
 
-        // let news_table_element = match center_element.select(&news_table_selector).next() {
-        //     Some(element) => element,
-        //     // We can return anything, because it will not be further evaluated / used.
-        //     None => return vec![]
-        // };
-
         let news_table_element = some_or_bail!(center_element.select(&news_table_selector).next(), vec![]);
 
         let mut news: Vec<String> = vec![];
@@ -186,7 +184,7 @@ impl UntisParser {
 
         for (index, content_map) in plan.iter().enumerate() {
             let raw_classes: Vec<String> = content_map.iter().map(|item| {
-                item.get("klasse(n)").unwrap().to_string()
+                item.get("klasse(n)").unwrap().replace("(", "").replace(")", "").to_string()
             }).collect();
 
             let mut classes = BTreeSet::<String>::new();
@@ -232,11 +230,11 @@ impl UntisParser {
             if current_version.contains(&center_index) {
                 parse_result.date.0 = date;
                 parse_result.news.0 = news;
-                parse_result.content.0 = content;
+                parse_result.content.0.extend(content);
             } else if upcoming_version.contains(&center_index) {
                 parse_result.date.1 = date;
                 parse_result.news.1 = news;
-                parse_result.content.1 = content
+                parse_result.content.1.extend(content);
             }
         }
 
@@ -244,7 +242,7 @@ impl UntisParser {
     }
 
     pub async fn execute(&self) -> Result<UntisOutput> {
-        if self.document.len() == 0 {
+        if self.document.is_empty() {
             bail!("HTML document in form of a string must be supplied");
         }
 
@@ -273,5 +271,87 @@ impl UntisParser {
                 affected_classes: affected_classes.1
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn setup_parser(test_file_path: &str) -> (UntisParser, String) {
+        let file = std::fs::read_to_string(format!("tests/plans/{}", test_file_path)).unwrap();
+
+        let parser = UntisParser {
+            document: file.clone()
+        };
+
+        (parser, file)
+    }
+
+    #[tokio::test]
+    async fn bail_on_empty_document() {
+        let parser = UntisParser {
+            document: "".to_string()
+        };
+
+        let result = parser.execute().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn date_parsing() {
+        let (parser, file) = setup_parser("date.html");
+        let element = Html::parse_document(&file);
+
+        for (index, center_element) in element.select(&Selector::parse("center").unwrap()).enumerate() {
+            let date = parser.parse_date(&center_element);
+
+            match index {
+                0 => assert_eq!(date, DateParseOutput {
+                    date: "16.12.2022".to_string(),
+                    weekday: "Freitag".to_string(),
+                    week_type: "A".to_string()
+                }),
+                1 => assert_eq!(date, DateParseOutput {
+                    date: "19.12.2022".to_string(),
+                    weekday: "Montag".to_string(),
+                    week_type: "B".to_string()
+                }),
+                2 => assert_eq!(date, DateParseOutput {
+                    date: "15.12.2022".to_string(),
+                    weekday: "Donnerstag".to_string(),
+                    week_type: "A".to_string()
+                }),
+                _ => {}
+            }
+
+        }
+    }
+
+    #[tokio::test]
+    async fn table_version_parsing() {
+        let (parser, file) = setup_parser("full-1.html");
+        let document = Html::parse_document(&file);
+
+        let (current, upcoming) = parser.parse_table_versions(&document).unwrap();
+
+        assert_eq!(current, vec![0, 2]);
+        assert_eq!(upcoming, vec![4, 6]);
+
+        let (parser, file) = setup_parser("full-2.html");
+        let document = Html::parse_document(&file);
+
+        let (current, upcoming) = parser.parse_table_versions(&document).unwrap();
+
+        assert_eq!(current, vec![0, 2]);
+        assert_eq!(upcoming, vec![4]);
+
+        let (parser, file) = setup_parser("full-3.html");
+        let document = Html::parse_document(&file);
+
+        let (current, upcoming) = parser.parse_table_versions(&document).unwrap();
+
+        assert_eq!(current, vec![0, 2]);
+        assert_eq!(upcoming, vec![4]);
     }
 }
