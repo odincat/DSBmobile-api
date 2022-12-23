@@ -1,5 +1,5 @@
 # DSBmobile & Untis "scraper"
-This project is a Rust implementation of a scraper for the DSBmobile (staticly served Untis plans, to be specific), which is an app used by some schools in Germany to distribute their substitution plans.
+This project is a Rust implementation of a scraper for DSBmobile (staticly served Untis plans, to be specific), which is an app used by some schools in Germany to distribute their substitution plans.
 
 ## Features
 - configuration based, supporting multiple schools / plans
